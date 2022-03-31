@@ -15,13 +15,11 @@ let webhookQueue = {}
 io.on("connection", (socket) => {
 
     socket.on('join', function (data) {
-        socket.join(`${data}`)
-        io.to(socket.id).emit("webhook_queue", webhookQueue[data])
+        (data || []).forEach(ele => socket.join(`${ele}`));
+        retrivePendingWebhook(data)
     });
 
-    socket.on('retrive_webhook_queue', function (data) {
-        io.to(socket.id).emit("webhook_queue", webhookQueue[data])
-    });
+    socket.on('retrive_webhook_queue', retrivePendingWebhook);
 
     socket.on('webhook_status_update', function (data) {
         let socketId = data.room_id, specificedData = webhookQueue[socketId] || []
@@ -36,6 +34,12 @@ io.on("connection", (socket) => {
     socket.on('disconnect', function () {
         socket.leave(`${socket.id}`)
     });
+
+    function retrivePendingWebhook(data) {
+        let allPendingQueue = [];
+        (data || []).forEach(ele => allPendingQueue = allPendingQueue.concat(webhookQueue[ele] || []));
+        io.to(socket.id).emit("webhook_queue", allPendingQueue)
+    }
 });
 
 app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
@@ -67,5 +71,5 @@ app.use('/', (req, res) => {
 
 function addDataInwebhookQueue(socketId, req) {
     webhookQueue[socketId] = webhookQueue[socketId] || []
-    webhookQueue[socketId].push({ ...req.body, inner_ref_id: uuid() })
+    webhookQueue[socketId].push({ ...req.body, socketId, inner_ref_id: uuid() })
 }

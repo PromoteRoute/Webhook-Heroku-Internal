@@ -14,9 +14,9 @@
     document.getElementById('app_url').innerText = "The heroku url for your PR is : " + window.location.href;
   }, 2000);
 
-  socket.emit('join', roomId)
+  socket.emit('join', [roomId])
 
-  // socket.emit('retrive_webhook_queue', roomId)
+  // socket.emit('retrive_webhook_queue', [roomId])
 
   socket.on('pr_webhook_received', function (data) {
     console.log("pr_webhook_received -------> " + JSON.stringify(data));
