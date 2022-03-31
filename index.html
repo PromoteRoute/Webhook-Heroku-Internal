@@ -12,7 +12,6 @@
 
   setTimeout(() => {
     document.getElementById('app_url').innerText = "The heroku url for your PR is : " + window.location.href;
-    console.log(window.location.href);
   }, 2000);
 
   socket.emit('join', roomId)
