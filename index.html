@@ -11,7 +11,7 @@
 
 
   setTimeout(() => {
-    document.getElementById('app_url').innerText = "The heroku url for your PR is : " + window.location.href;
+    document.getElementById('app_url')?.innerText = "The heroku url for your PR is : " + window.location.href;
   }, 2000);
 
   socket.emit('join', [roomId])
@@ -30,7 +30,7 @@
 
   function onclickSendWebhook() {
     if (pendingWebhook.length > 0) {
-      socket.emit('webhook_status_update', { room_id: roomId, data: pendingWebhook[0] })
+      socket.emit('webhook_status_update', pendingWebhook[0])
     }
   }
 

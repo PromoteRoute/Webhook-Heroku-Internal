@@ -22,12 +22,12 @@ io.on("connection", (socket) => {
     socket.on('retrive_webhook_queue', retrivePendingWebhook);
 
     socket.on('webhook_status_update', function (data) {
-        let socketId = data.room_id, specificData = webhookQueue[socketId] || []
-        let index = specificData.findIndex(ele => ele.inner_ref_id = data.data.inner_ref_id)
+        let specificData = webhookQueue[data.socketId] || []
+        let index = specificData.findIndex(ele => ele.inner_ref_id = data.inner_ref_id)
         if (index >= 0) {
             specificData.splice(index, 1)
-            webhookQueue[socketId] = specificData
-            io.to(socketId).emit("webhook_queue", specificData)
+            webhookQueue[data.socketId] = specificData
+            io.to(data.socketId).emit("webhook_queue", specificData)
         }
     });
 
@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
 });
 
 app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
-    let socketId = `${atob(req.params.mo_no)}$$$${req.params.unique_id}`
+    let socketId = `${req.params.mo_no}$$$${req.params.unique_id}`;
     try {
         let roomIds = Array.from(io.sockets?.adapter?.rooms || [])
         let userRoomId = roomIds.filter(room => !room[1].has(room[0])).find(ele => ele[0] === socketId)
