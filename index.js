@@ -42,11 +42,6 @@ io.on("connection", (socket) => {
     }
 });
 
-app.post('/api/v1/pr-webhook/test', (req, res) => {
-    res.status(200);
-    res.json({ status: 200 });
-});
-
 app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
     let socketId = `${req.params.mo_no}$$$${req.params.unique_id}`;
     try {
@@ -66,6 +61,11 @@ app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
         addDataInwebhookQueue(socketId, req)
     }
 
+    res.status(200);
+    res.json({ status: 200 });
+});
+
+app.get('/api/v1/pr-webhook/test', (req, res) => {
     res.status(200);
     res.json({ status: 200 });
 });
