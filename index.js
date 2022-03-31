@@ -22,12 +22,12 @@ io.on("connection", (socket) => {
     socket.on('retrive_webhook_queue', retrivePendingWebhook);
 
     socket.on('webhook_status_update', function (data) {
-        let socketId = data.room_id, specificedData = webhookQueue[socketId] || []
-        let index = specificedData.findIndex(ele => ele.inner_ref_id = data.data.inner_ref_id)
+        let socketId = data.room_id, specificData = webhookQueue[socketId] || []
+        let index = specificData.findIndex(ele => ele.inner_ref_id = data.data.inner_ref_id)
         if (index >= 0) {
-            specificedData.splice(index, 1)
-            webhookQueue[socketId] = specificedData
-            io.to(socketId).emit("webhook_queue", specificedData)
+            specificData.splice(index, 1)
+            webhookQueue[socketId] = specificData
+            io.to(socketId).emit("webhook_queue", specificData)
         }
     });
 
