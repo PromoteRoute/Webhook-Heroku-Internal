@@ -1,0 +1,71 @@
+const app = require('express')();
+const { uuid } = require('uuidv4');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const server = require('http').createServer(app);
+const io = require('socket.io')(server, { cors: { origin: '*' } });
+
+server.listen(process.env.PORT || 3098);
+app.use(cors({ exposedHeaders: ["Link"] }));
+app.use(bodyParser.urlencoded({ extended: true, }));
+app.use(bodyParser.json({ limit: "50MB" }));
+
+app.use('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
+let webhookQueue = {}
+
+io.on("connection", (socket) => {
+
+    socket.on('join', function (data) {
+        socket.join(`${data}`)
+        io.to(socket.id).emit("webhook_queue", webhookQueue[data])
+    });
+
+    socket.on('retrive_webhook_queue', function (data) {
+        io.to(socket.id).emit("webhook_queue", webhookQueue[data])
+    });
+
+    socket.on('webhook_status_update', function (data) {
+        let socketId = data.room_id, specificedData = webhookQueue[socketId] || []
+        let index = specificedData.findIndex(ele => ele.inner_ref_id = data.data.inner_ref_id)
+        if (index >= 0) {
+            specificedData.splice(index, 1)
+            webhookQueue[socketId] = specificedData
+            io.to(socketId).emit("webhook_queue", specificedData)
+        }
+    });
+
+    socket.on('disconnect', function () {
+        socket.leave(`${socket.id}`)
+    });
+});
+
+app.post('api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
+    let socketId = `${req.params.mo_no}$$$${req.params.unique_id}`
+    try {
+        let roomIds = Array.from(io.sockets?.adapter?.rooms || [])
+        let userRoomId = roomIds.filter(room => !room[1].has(room[0])).find(ele => ele[0] === socketId)
+        if (!!userRoomId) {
+            let roomSocketIds = Array.from(userRoomId[1])
+            if (roomSocketIds.length > 0) {
+                io.to(roomSocketIds[0]).emit("pr_webhook_received", req.body)
+            } else {
+                addDataInwebhookQueue(socketId, req)
+            }
+        } else {
+            addDataInwebhookQueue(socketId, req)
+        }
+    } catch (error) {
+        addDataInwebhookQueue(socketId, req)
+    }
+
+    res.status(200);
+    res.json({ status: 200 });
+});
+
+function addDataInwebhookQueue(socketId, req) {
+    webhookQueue[socketId] = webhookQueue[socketId] || []
+    webhookQueue[socketId].push({ ...req.body, inner_ref_id: uuid() })
+}

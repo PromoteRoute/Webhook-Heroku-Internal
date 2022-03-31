@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Hello world</title>
+</head>
+<script src="https://cdn.socket.io/4.4.0/socket.io.min.js"></script>
+<script>
+  var socket = io();
+  let roomId = `ASD645A$$$654asd56asd45`, pendingWebhook = []
+
+  socket.emit('join', roomId)
+
+  // socket.emit('retrive_webhook_queue', roomId)
+
+  socket.on('pr_webhook_received', function (data) {
+    console.log("pr_webhook_received -------> " + JSON.stringify(data));
+  });
+
+  socket.on('webhook_queue', function (data) {
+    console.log("webhook_queue -------> " + JSON.stringify(data));
+    pendingWebhook = data || []
+    document.getElementById('pending_webhook_data').innerText = JSON.stringify(data, null, 2)
+  });
+
+  function onclickSendWebhook() {
+    if (pendingWebhook.length > 0) {
+      socket.emit('webhook_status_update', { room_id: roomId, data: pendingWebhook[0] })
+    }
+  }
+
+</script>
+
+<body>
+  <span id="pending_webhook_data"></span>
+  </br>
+  </br>
+  <button onclick="onclickSendWebhook()" type="button">Send First Webhook</button>
+</body>
+
+</html>
