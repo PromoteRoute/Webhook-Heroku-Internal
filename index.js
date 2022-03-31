@@ -10,10 +10,6 @@ app.use(cors({ exposedHeaders: ["Link"] }));
 app.use(bodyParser.urlencoded({ extended: true, }));
 app.use(bodyParser.json({ limit: "50MB" }));
 
-app.use('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
-});
-
 let webhookQueue = {}
 
 io.on("connection", (socket) => {
@@ -63,6 +59,10 @@ app.post('api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
 
     res.status(200);
     res.json({ status: 200 });
+});
+
+app.use('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
 });
 
 function addDataInwebhookQueue(socketId, req) {
