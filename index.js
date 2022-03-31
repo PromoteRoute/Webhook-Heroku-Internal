@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
 });
 
 app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
-    let socketId = `${req.params.mo_no}$$$${req.params.unique_id}`
+    let socketId = `${atob(req.params.mo_no)}$$$${req.params.unique_id}`
     try {
         let roomIds = Array.from(io.sockets?.adapter?.rooms || [])
         let userRoomId = roomIds.filter(room => !room[1].has(room[0])).find(ele => ele[0] === socketId)
