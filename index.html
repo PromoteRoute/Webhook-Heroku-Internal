@@ -9,6 +9,8 @@
   var socket = io();
   let roomId = `ASD645A$$$654asd56asd45`, pendingWebhook = []
 
+  document.getElementById('app_url').innerText = "The heroku url for your PR is : " + window.location.href;
+
   socket.emit('join', roomId)
 
   // socket.emit('retrive_webhook_queue', roomId)
@@ -33,6 +35,9 @@
 
 <body>
   <span id="pending_webhook_data"></span>
+  </br>
+  </br>
+  <span id="app_url"></span>
   </br>
   </br>
   <button onclick="onclickSendWebhook()" type="button">Send First Webhook</button>
