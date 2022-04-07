@@ -25,7 +25,7 @@ io.on("connection", (socket) => {
 
     socket.on('webhook_status_update', function (data) {
         let specificData = webhookQueue[data.socketId] || []
-        let index = specificData.findIndex(ele => ele.inner_ref_id = data.inner_ref_id)
+        let index = specificData.findIndex(ele => ele.inner_ref_id === data.inner_ref_id)
         if (index >= 0) {
             specificData.splice(index, 1)
             webhookQueue[data.socketId] = specificData
