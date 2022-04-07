@@ -2,8 +2,10 @@ const app = require('express')();
 const { uuid } = require('uuidv4');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+var validator = require('is-my-json-valid')
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
+const validateJson = require("./validate.json")
 
 server.listen(process.env.PORT || 3098);
 app.use(cors({ exposedHeaders: ["Link"] }));
@@ -42,27 +44,42 @@ io.on("connection", (socket) => {
     }
 });
 
-app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
+function sendDataToSocekt(req, isValid, response, status) {
     let socketId = `${req.params.mo_no}$$$${req.params.unique_id}`;
+    let sendData = { socketId, error: !isValid, from: atob(req.params.mo_no), uniqueId: req.params.unique_id, url: req.url, request: req.body, response, status, inner_ref_id: uuid() }
     try {
         let roomIds = Array.from(io.sockets?.adapter?.rooms || [])
         let userRoomId = roomIds.filter(room => !room[1].has(room[0])).find(ele => ele[0] === socketId)
         if (!!userRoomId) {
             let roomSocketIds = Array.from(userRoomId[1])
             if (roomSocketIds.length > 0) {
-                io.to(roomSocketIds[0]).emit("pr_webhook_received", req.body)
+                io.to(roomSocketIds[0]).emit("pr_webhook_received", sendData)
             } else {
-                addDataInwebhookQueue(socketId, req)
+                addDataInwebhookQueue(socketId, sendData)
             }
         } else {
-            addDataInwebhookQueue(socketId, req)
+            addDataInwebhookQueue(socketId, sendData)
         }
     } catch (error) {
-        addDataInwebhookQueue(socketId, req)
+        addDataInwebhookQueue(socketId, sendData)
     }
+}
 
-    res.status(200);
-    res.json({ status: 200 });
+app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
+    try {
+        var validate = validator(validateJson)
+        let isValid = validate(req.body, { greedy: true });
+        let status = isValid ? 200 : 422
+        let successJson = { status, error: validate.errors }
+        sendDataToSocekt(req, isValid, successJson, status)
+        res.status(status);
+        res.json(successJson);
+    } catch (error) {
+        let errJson = { status: 500, error: error.message }
+        sendDataToSocekt(req, false, errJson, 500)
+        res.status(500);
+        res.json(errJson);
+    }
 });
 
 app.get('/api/v1/pr-webhook/test', (req, res) => {
@@ -74,7 +91,7 @@ app.use('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-function addDataInwebhookQueue(socketId, req) {
+function addDataInwebhookQueue(socketId, sendData) {
     webhookQueue[socketId] = webhookQueue[socketId] || []
-    webhookQueue[socketId].push({ ...req.body, socketId, inner_ref_id: uuid() })
+    webhookQueue[socketId].push(sendData)
 }
