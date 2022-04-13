@@ -12,6 +12,7 @@
   "dependencies": {
     "body-parser": "^1.19.2",
     "cors": "^2.8.5",
+    "cors-anywhere": "^0.4.4",
     "express": "^4.17.3",
     "http": "^0.0.1-security",
     "is-my-json-valid": "^2.20.6",

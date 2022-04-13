@@ -12,6 +12,12 @@ app.use(cors({ exposedHeaders: ["Link"] }));
 app.use(bodyParser.urlencoded({ extended: true, }));
 app.use(bodyParser.json({ limit: "50MB" }));
 
+const cors_proxy = require('cors-anywhere').createServer({
+    originWhitelist: [],
+    requireHeader: [],
+    removeHeaders: []
+})
+
 let webhookQueue = {}
 
 io.on("connection", (socket) => {
@@ -46,7 +52,7 @@ io.on("connection", (socket) => {
 
 function sendDataToSocekt(req, isValid, response, status) {
     let socketId = `${req.params.mo_no}$$$${req.params.unique_id}`;
-    let sendData = { socketId, error: !isValid, from: atob(req.params.mo_no), uniqueId: req.params.unique_id, url: req.url, request: req.body, response, status, inner_ref_id: uuid() }
+    let sendData = { socketId, error: !isValid, from: atob(req.params.mo_no), uniqueId: req.params.unique_id, url: req.protocol + "://" + req.get('host') + req.originalUrl, request: req.body, response, status, inner_ref_id: uuid() }
     try {
         let roomIds = Array.from(io.sockets?.adapter?.rooms || [])
         let userRoomId = roomIds.filter(room => !room[1].has(room[0])).find(ele => ele[0] === socketId)
@@ -85,6 +91,11 @@ app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
 app.get('/api/v1/pr-webhook/test', (req, res) => {
     res.status(200);
     res.json({ status: 200 });
+});
+
+app.get('/proxy/:proxyUrl*', (req, res) => {
+    req.url = req.url.replace('/proxy/', '/');
+    cors_proxy.emit('request', req, res);
 });
 
 app.use('/', (req, res) => {
