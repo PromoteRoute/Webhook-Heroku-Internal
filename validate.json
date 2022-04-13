@@ -169,7 +169,7 @@
             "required": [
                 "type",
                 "to",
-                "contacts"
+                "attachments"
             ],
             "properties": {
                 "type": {
@@ -181,13 +181,13 @@
                 "to": {
                     "type": "string"
                 },
-                "contacts": {
+                "attachments": {
                     "type": "array",
                     "minItems": 1,
                     "item": {
                         "type": "object",
                         "required": [
-                            "url"
+                            "phone"
                         ],
                         "properties": {
                             "phone": {
