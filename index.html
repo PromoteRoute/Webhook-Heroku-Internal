@@ -579,9 +579,9 @@
     </div>
   </div>
   <script>
-    document.getElementById("app_path_input").value = window.location.href
+    document.getElementById("app_path_input").value = window.location.origin
     function copyFunction() {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(window.location.origin);
       document.getElementById("button-copy-text").innerText = "Copied!"
       setTimeout(() => {
         document.getElementById("button-copy-text").innerText = "Copy"
