@@ -74,7 +74,24 @@ function sendDataToSocekt(req, isValid, response, status) {
     }
 }
 
-app.post('/api/v1/pr-webhook/:mo_no/:unique_id', (req, res) => {
+async function checkHeader(req, res, next) {
+    let apiKey = req.headers && (req.headers['X-PR-API-KEY'] || req.headers['x-pr-api-key'])
+    if (!apiKey) {
+        res.status(401);
+        res.json({ status: 401, error: 'Access token is missing' });
+    }
+
+    let url = req.protocol + "://" + req.get('host') + `/missed/apikey?public_key=${apiKey}`
+    let response = await getDataWebhookQueue({ url });
+    if (response && response.length > 0) {
+        next()
+    } else {
+        res.status(401);
+        res.json({ status: 401, error: 'Access token is invalid' });
+    }
+}
+
+app.post('/api/v1/pr-webhook/:mo_no/:unique_id', checkHeader, (req, res) => {
     try {
         var validate = validator(validateJson)
         let isValid = validate(req.body, { greedy: true });
