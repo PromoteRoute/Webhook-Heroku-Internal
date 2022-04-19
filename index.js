@@ -6,13 +6,19 @@ var validator = require('is-my-json-valid')
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, { cors: { origin: '*' } });
 const validateJson = require("./validate.json")
-const jsonServer = require('json-server');
-const fetch = require('cross-fetch');
+const { Pool } = require('postgres-pool')
 
 server.listen(process.env.PORT || 3098);
 app.use(cors({ exposedHeaders: ["Link"] }));
 app.use(bodyParser.urlencoded({ extended: true, }));
 app.use(bodyParser.json({ limit: "50MB" }));
+
+var pool = null
+
+if (!!process.env.DATABASE_URL) {
+    pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+    createTable()
+}
 
 const cors_proxy = require('cors-anywhere').createServer({
     originWhitelist: [],
@@ -22,18 +28,19 @@ const cors_proxy = require('cors-anywhere').createServer({
 
 io.on("connection", (socket) => {
 
-    socket.on('join', function ({ roomId, url }) {
+    socket.on('join', function (roomId) {
         (roomId || []).forEach(ele => socket.join(`${ele}`));
-        retrivePendingWebhook({ roomId, url })
+        retrivePendingWebhook(roomId)
     });
 
     socket.on('retrive_webhook_queue', retrivePendingWebhook);
 
-    socket.on('webhook_status_update', async function ({ data, url }) {
-        let specificData = await getDataWebhookQueue({ url: `${url}/missed/webhook?socketId=${data.socketId}` });
+    socket.on('webhook_status_update', async function (data) {
+        let specificAllData = await getMissedWebhookBySocekt(data.socketId);
+        let specificData = (specificAllData || []).map(ele => ele.mw_data)
         let index = specificData.findIndex(ele => ele.inner_ref_id === data.inner_ref_id)
         if (index >= 0 && specificData[index]) {
-            await getDataWebhookQueue({ url: `${url}/missed/webhook/${specificData[index].id}`, method: "DELETE" })
+            await deleteMissedWebhookBySocekt(specificAllData[index].mw_id)
             specificData.splice(index, 1)
             io.to(data.socketId).emit("webhook_queue", specificData)
         }
@@ -43,11 +50,12 @@ io.on("connection", (socket) => {
         socket.leave(`${socket.id}`)
     });
 
-    async function retrivePendingWebhook({ roomId, url }) {
+    async function retrivePendingWebhook(roomId) {
         let allPendingQueue = [];
         for (let i = 0; i < (roomId || []).length; i++) {
-            let res = await getDataWebhookQueue({ url: `${url}/missed/webhook?socketId=${roomId[i]}` });
-            allPendingQueue = allPendingQueue.concat(res || [])
+            let res = await getMissedWebhookBySocekt(roomId[i]);
+            res = (res || []).map(ele => ele.mw_data)
+            allPendingQueue = allPendingQueue.concat(res)
         }
         io.to(socket.id).emit("webhook_queue", allPendingQueue)
     }
@@ -64,13 +72,13 @@ function sendDataToSocekt(req, isValid, response, status) {
             if (roomSocketIds.length > 0) {
                 io.to(roomSocketIds[0]).emit("pr_webhook_received", sendData)
             } else {
-                addDataInwebhookQueue(req, sendData)
+                addDataInWebhookQueue(sendData)
             }
         } else {
-            addDataInwebhookQueue(req, sendData)
+            addDataInWebhookQueue(sendData)
         }
     } catch (error) {
-        addDataInwebhookQueue(req, sendData)
+        addDataInWebhookQueue(sendData)
     }
 }
 
@@ -79,10 +87,10 @@ async function checkHeader(req, res, next) {
     if (!apiKey) {
         res.status(401);
         res.json({ status: 401, error: 'Access token is missing' });
+        return
     }
 
-    let url = req.protocol + "://" + req.get('host') + `/missed/apikey?public_key=${apiKey}`
-    let response = await getDataWebhookQueue({ url });
+    let response = await checkIsKeyAdded(apiKey);
     if (response && response.length > 0) {
         next()
     } else {
@@ -113,7 +121,44 @@ app.get('/api/v1/pr-webhook/test', (req, res) => {
     res.json({ status: 200 });
 });
 
-app.use('/missed', jsonServer.router('db.json'));
+app.post('/api/v1/pr-apikey/add', async (req, res) => {
+    try {
+        let getKeyData = await executeQuery(`select * from public.api_key where ak_key = $1`, [req.body.key])
+        if (!!getKeyData && getKeyData.rows && getKeyData.rows.length > 0) {
+            res.status(200);
+            res.json({ status: 200 });
+            return
+        }
+
+        let results = await executeQuery(`insert into public.api_key (ak_key) values ($1)`, [req.body.key])
+        if (!!results) {
+            res.status(200);
+            res.json({ status: 200 });
+        } else {
+            res.status(400);
+            res.json({ status: 400 });
+        }
+    } catch (error) {
+        res.status(500);
+        res.json({ status: 500, error: 'Something went wrong. try again after some time.' });
+    }
+});
+
+app.delete('/api/v1/pr-apikey/:key', async (req, res) => {
+    try {
+        let results = await executeQuery(`delete from public.api_key where ak_key = $1`, [req.params.key])
+        if (!!results) {
+            res.status(200);
+            res.json({ status: 200 });
+        } else {
+            res.status(400);
+            res.json({ status: 400 });
+        }
+    } catch (error) {
+        res.status(500);
+        res.json({ status: 500, error: 'Something went wrong. try again after some time.' });
+    }
+});
 
 app.get('/proxy/:proxyUrl*', (req, res) => {
     req.url = req.url.replace('/proxy/', '/');
@@ -124,16 +169,42 @@ app.use('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-function addDataInwebhookQueue(req, sendData) {
-    let url = req.protocol + "://" + req.get('host') + "/missed/webhook"
-    fetch(url, { method: 'POST', body: JSON.stringify(sendData), headers: { 'Content-Type': 'application/json' } })
+async function createTable() {
+    executeQuery('CREATE TABLE IF NOT EXISTS public.missed_webhook (mw_id bigserial, mw_data json, mw_socket_id text, mw_config json, mw_created_at timestamp with time zone DEFAULT now()); CREATE TABLE IF NOT EXISTS public.api_key (ak_id bigserial, ak_key text, ak_created_at timestamp with time zone DEFAULT now());');
 }
 
-function getDataWebhookQueue({ url, method = "GET", callback = () => { } }) {
-    return new Promise((resolve) => {
-        fetch(url.replace(/([^:]\/)\/+/g, "$1"), { method }).then(r => r.json()).then(res => {
-            callback(res)
-            resolve(res)
-        })
+function addDataInWebhookQueue(sendData) {
+    executeQuery('insert into public.missed_webhook (mw_data, mw_socket_id) values ($1, $2)', [JSON.stringify(sendData), sendData.socketId]);
+}
+
+function getMissedWebhookBySocekt(roomId) {
+    return new Promise(async (resolve) => {
+        let results = await executeQuery(`select * from public.missed_webhook where mw_socket_id = $1`, [roomId]);
+        resolve(results?.rows)
+    })
+}
+
+function checkIsKeyAdded(key) {
+    return new Promise(async (resolve) => {
+        let results = await executeQuery(`select * from public.api_key where ak_key = $1`, [key]);
+        resolve(results?.rows)
+    })
+}
+
+function deleteMissedWebhookBySocekt(id) {
+    return new Promise(async (resolve) => {
+        await executeQuery(`delete from public.missed_webhook where mw_id = $1`, [id]);
+        resolve(true)
+    })
+}
+
+function executeQuery(query, value = []) {
+    return new Promise(async (resolve) => {
+        if (!!pool) {
+            let results = await pool.query(query, value);
+            resolve(results)
+        } else {
+            resolve(null)
+        }
     })
 }
