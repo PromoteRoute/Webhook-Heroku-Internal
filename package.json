@@ -16,6 +16,7 @@
     "express": "^4.17.3",
     "http": "^0.0.1-security",
     "is-my-json-valid": "^2.20.6",
+    "postgres-pool": "^5.0.15",
     "socket.io": "^4.4.1",
     "uuidv4": "^6.2.13"
   }
