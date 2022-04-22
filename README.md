@@ -12,7 +12,7 @@
 
 Promote Route is a chrome extension that provides you, A Better WhatsApp™ Experience.</br>
 On top of that, it allows you to send automated, customized, and highly personalized multiple texts as well as WhatsApp™ multimedia messages.</br>
-Only only that, It provides advanced features like Smart Reply, Campaign, Webhook, and Integrations.
+Not only that, It provides advanced features like Smart Reply, Campaign, Webhook, and Integrations.
 
  </br>
 
