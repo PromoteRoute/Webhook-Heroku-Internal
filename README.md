@@ -4,7 +4,6 @@
  <img src="https://promoteroute.com/wp-content/uploads/2022/03/Promote-Route-Logo.png" />
  </br>
  </br>
- </br>
 </p>
 
 # What is Promote Route?
