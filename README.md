@@ -24,8 +24,8 @@ To learn more about Promote Route, We highly Recommended to
 
 </br>
 
-<a href="https://chrome.google.com/webstore/detail/promote-route-a-better-wh/lgfomefmfkpdfhndeaaikffjbfobajbg">
-<img src="https://promoteroute.com/wp-content/uploads/2022/04/Group-18335-1-e1649847827543.png" alt="Chrome Web Store" width="230" height="60">
+<a target="_blank" href="https://chrome.google.com/webstore/detail/promote-route-a-better-wh/lgfomefmfkpdfhndeaaikffjbfobajbg">
+<img src="https://promoteroute.com/wp-content/uploads/2022/04/Group-18335-1-e1649847827543.png" alt="Chrome Web Store" width="200" height="50">
 </a>
 
 </br>
